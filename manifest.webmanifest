@@ -1,10 +1,22 @@
 {
   "name": "Rani Vet Medicine",
   "short_name": "Rani Vet",
+  "description": "Veterinary Medicine Shop Management App",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f5f7f6",
   "theme_color": "#006b35",
   "orientation": "portrait",
-  "icons": []
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
 }
