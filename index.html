@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#006b35">
+<title>Rani Vet Medicine</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,"Noto Sans Bengali",sans-serif;background:#f5f7f6;color:#17221c}
+header{background:#006b35;color:#fff;padding:18px 16px;position:sticky;top:0;z-index:5}
+header h1{margin:0;font-size:24px}header small{opacity:.9}
+nav{display:flex;gap:7px;overflow:auto;padding:10px;background:#fff;position:sticky;top:75px;z-index:4;border-bottom:1px solid #ddd}
+nav button{border:0;background:#eef5f1;padding:9px 12px;border-radius:20px;white-space:nowrap;color:#075c31;font-weight:600}
+nav button.active{background:#006b35;color:#fff}
+main{padding:14px;max-width:1000px;margin:auto}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.card{background:#fff;border-radius:14px;padding:16px;box-shadow:0 2px 9px #0000000c;border:1px solid #e6ebe8}
+.card h3{margin:0 0 8px;font-size:15px;color:#58645d}.num{font-size:25px;font-weight:800}
+.green{color:#08753b}.red{color:#d32f2f}.blue{color:#145dcc}.orange{color:#d87500}
+.panel{background:#fff;border-radius:14px;padding:16px;margin-top:14px;border:1px solid #e6ebe8}
+input,select{width:100%;padding:11px;border:1px solid #ccd6d0;border-radius:9px;margin:5px 0 10px;font-size:15px}
+button.primary{background:#006b35;color:#fff;border:0;border-radius:9px;padding:11px 15px;font-weight:700;cursor:pointer}
+button.danger{background:#d32f2f;color:#fff;border:0;border-radius:8px;padding:7px 10px}
+table{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px}th,td{padding:10px;border-bottom:1px solid #e6ebe8;text-align:left}th{background:#f3f7f4}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+.notice{padding:12px;border-radius:10px;background:#fff4dc;margin-top:10px}.empty{color:#78837d;text-align:center;padding:20px}
+.hidden{display:none}.profit{font-weight:800;color:#08753b}
+</style>
+</head>
+<body>
+<header><h1>Rani Vet Medicine</h1><small>Veterinary Medicine Shop Management</small></header>
+<nav id="nav"></nav>
+<main id="app"></main>
+<script>
+const tabs=[
+["dashboard","Dashboard"],["products","Products"],["sales","Sales"],["purchase","Purchase"],
+["customers","Customers & Baki"],["expense","Expense"],["reports","Reports"]
+];
+const store={
+get(k,d=[]){try{return JSON.parse(localStorage.getItem("rvm_"+k))??d}catch(e){return d}},
+set(k,v){localStorage.setItem("rvm_"+k,JSON.stringify(v))}
+};
+let state={
+products:store.get("products"), sales:store.get("sales"), purchases:store.get("purchases"),
+customers:store.get("customers"), expenses:store.get("expenses")
+};
+let current="dashboard";
+function save(){for(const k in state)store.set(k,state[k])}
+function money(n){return "৳ "+Number(n||0).toLocaleString("en-IN")}
+function nav(){
+document.getElementById("nav").innerHTML=tabs.map(t=>`<button class="${current==t[0]?'active':''}" onclick="go('${t[0]}')">${t[1]}</button>`).join("");
+}
+function go(x){current=x;nav();render()}
+function render(){const a=document.getElementById("app"); if(current==="dashboard")dash(a); else if(current==="products")products(a); else if(current==="sales")sales(a); else if(current==="purchase")purchase(a); else if(current==="customers")customers(a); else if(current==="expense")expense(a); else reports(a)}
+function totalSales(){return state.sales.reduce((s,x)=>s+x.total,0)}
+function totalProfit(){return state.sales.reduce((s,x)=>s+x.profit,0)-state.expenses.reduce((s,x)=>s+x.amount,0)}
+function totalBaki(){return state.customers.reduce((s,x)=>s+(x.baki||0),0)}
+function dash(a){
+let low=state.products.filter(x=>x.stock<=5);
+a.innerHTML=`<div class="grid">
+<div class="card"><h3>আজকের বিক্রি</h3><div class="num green">${money(totalSales())}</div></div>
+<div class="card"><h3>মোট লাভ</h3><div class="num green">${money(totalProfit())}</div></div>
+<div class="card"><h3>মোট বাকি</h3><div class="num red">${money(totalBaki())}</div></div>
+<div class="card"><h3>Stock Value</h3><div class="num blue">${money(state.products.reduce((s,x)=>s+x.buy*x.stock,0))}</div></div>
+</div>
+<div class="panel"><h3>কম Stock (${low.length})</h3>${low.length?low.map(x=>`<div class="notice">${x.name} • ${x.stock} ${x.unit||"পিস"}</div>`).join(""):`<div class="empty">কোনো কম-stock product নেই</div>`}</div>
+<div class="panel"><h3>Quick Add</h3><div class="grid">
+<button class="primary" onclick="go('products')">+ Product</button>
+<button class="primary" onclick="go('sales')">+ Sale</button>
+<button class="primary" onclick="go('purchase')">+ Purchase</button>
+<button class="primary" onclick="go('customers')">+ Customer</button>
+<button class="primary" onclick="go('expense')">+ Expense</button>
+</div></div>`;
+}
+function products(a){
+a.innerHTML=`<div class="panel"><h2>Products</h2><div class="row">
+<div><label>Product name</label><input id="pn"></div><div><label>Company</label><input id="pc"></div>
+<div><label>Category</label><input id="cat"></div><div><label>Purchase price</label><input id="pb" type="number"></div>
+<div><label>Sale price</label><input id="ps" type="number"></div><div><label>Stock</label><input id="pst" type="number"></div>
+<div><label>Unit</label><input id="pu" placeholder="পিস / বোতল / প্যাক"></div><div><label>Expiry</label><input id="pe" type="date"></div>
+</div><button class="primary" onclick="addProduct()">Save Product</button></div>
+<div class="panel"><h3>Product List</h3>${state.products.length?`<table><tr><th>Product</th><th>Company</th><th>Buy</th><th>Sell</th><th>Profit</th><th>Stock</th><th></th></tr>${state.products.map((x,i)=>`<tr><td>${x.name}</td><td>${x.company}</td><td>${money(x.buy)}</td><td>${money(x.sell)}</td><td class="profit">${money(x.sell-x.buy)}</td><td>${x.stock} ${x.unit}</td><td><button class="danger" onclick="delProduct(${i})">Delete</button></td></tr>`).join("")}</table>`:`<div class="empty">এখনো কোনো product যোগ করা হয়নি</div>`}</div>`;
+}
+function addProduct(){let x={name:pn.value.trim(),company:pc.value.trim(),cat:cat.value.trim(),buy:+pb.value,sell:+ps.value,stock:+pst.value,unit:pu.value.trim()||"পিস",expiry:pe.value};if(!x.name)return alert("Product name দিন");state.products.push(x);save();render()}
+function delProduct(i){if(confirm("Product delete করবেন?")){state.products.splice(i,1);save();render()}}
+function sales(a){
+a.innerHTML=`<div class="panel"><h2>Sales</h2><div class="row"><div><label>Product</label><select id="sp">${state.products.map((x,i)=>`<option value="${i}">${x.name} (stock ${x.stock})</option>`).join("")}</select></div><div><label>Quantity</label><input id="sq" type="number" value="1" min="1"></div><div><label>Customer</label><input id="sc" placeholder="নাম"></div><div><label>Customer paid</label><input id="spaid" type="number" value="0"></div></div><button class="primary" onclick="addSale()">Save Sale</button></div>
+<div class="panel"><h3>Sales History</h3>${state.sales.length?state.sales.slice().reverse().map(x=>`<div class="notice">${x.product} × ${x.qty} • ${money(x.total)} • লাভ ${money(x.profit)} ${x.customer?`• ${x.customer}`:""}</div>`).join(""):`<div class="empty">কোনো sale নেই</div>`}</div>`;
+}
+function addSale(){if(!state.products.length)return alert("আগে product যোগ করুন");let p=state.products[+sp.value],q=+sq.value;if(q>p.stock)return alert("Stock যথেষ্ট নেই");let total=p.sell*q,profit=(p.sell-p.buy)*q,paid=+spaid.value||0,customer=sc.value.trim();p.stock-=q;state.sales.push({product:p.name,qty:q,total,profit,customer,paid,date:new Date().toISOString()});if(customer){let c=state.customers.find(x=>x.name===customer);if(!c){c={name:customer,phone:"",baki:0};state.customers.push(c)}c.baki+=(total-paid)}save();render()}
+function purchase(a){
+a.innerHTML=`<div class="panel"><h2>Purchase / Stock In</h2><div class="row"><div><label>Product</label><select id="pp">${state.products.map((x,i)=>`<option value="${i}">${x.name}</option>`).join("")}</select></div><div><label>Quantity</label><input id="pq" type="number" value="1" min="1"></div><div><label>Purchase price</label><input id="pprice" type="number"></div><div><label>Supplier</label><input id="psup"></div></div><button class="primary" onclick="addPurchase()">Add Stock</button></div>
+<div class="panel"><h3>Purchase History</h3>${state.purchases.length?state.purchases.slice().reverse().map(x=>`<div class="notice">${x.product} × ${x.qty} • ${money(x.total)} • ${x.supplier||""}</div>`).join(""):`<div class="empty">কোনো purchase নেই</div>`}</div>`;
+}
+function addPurchase(){if(!state.products.length)return alert("আগে product যোগ করুন");let p=state.products[+pp.value],q=+pq.value,price=+pprice.value||p.buy;p.stock+=q;p.buy=price;state.purchases.push({product:p.name,qty:q,total:q*price,supplier:psup.value,date:new Date().toISOString()});save();render()}
+function customers(a){
+a.innerHTML=`<div class="panel"><h2>Customers & Baki</h2><div class="row"><div><label>Name</label><input id="cn"></div><div><label>Phone</label><input id="cp"></div></div><button class="primary" onclick="addCustomer()">Save Customer</button></div>
+<div class="panel">${state.customers.length?`<table><tr><th>Name</th><th>Phone</th><th>Baki</th><th>Payment</th></tr>${state.customers.map((x,i)=>`<tr><td>${x.name}</td><td>${x.phone||"-"}</td><td class="red">${money(x.baki)}</td><td><button class="primary" onclick="pay(${i})">জমা</button></td></tr>`).join("")}</table>`:`<div class="empty">কোনো customer নেই</div>`}</div>`;
+}
+function addCustomer(){let n=cn.value.trim();if(!n)return alert("নাম দিন");state.customers.push({name:n,phone:cp.value.trim(),baki:0});save();render()}
+function pay(i){let n=+prompt("কত টাকা জমা দিল?","0");if(!n)return;state.customers[i].baki=Math.max(0,state.customers[i].baki-n);save();render()}
+function expense(a){
+a.innerHTML=`<div class="panel"><h2>Expense</h2><div class="row"><div><label>খরচের নাম</label><input id="en"></div><div><label>Amount</label><input id="ea" type="number"></div></div><button class="primary" onclick="addExpense()">Save Expense</button></div>
+<div class="panel"><h3>Expense History</h3>${state.expenses.length?state.expenses.slice().reverse().map(x=>`<div class="notice">${x.name} • ${money(x.amount)}</div>`).join(""):`<div class="empty">কোনো expense নেই</div>`}</div>`;
+}
+function addExpense(){let n=en.value.trim(),v=+ea.value;if(!n||!v)return alert("তথ্য দিন");state.expenses.push({name:n,amount:v,date:new Date().toISOString()});save();render()}
+function reports(a){
+let sales=totalSales(),gross=state.sales.reduce((s,x)=>s+x.profit,0),exp=state.expenses.reduce((s,x)=>s+x.amount,0);
+a.innerHTML=`<div class="grid"><div class="card"><h3>মোট বিক্রি</h3><div class="num blue">${money(sales)}</div></div><div class="card"><h3>Gross Profit</h3><div class="num green">${money(gross)}</div></div><div class="card"><h3>Expense</h3><div class="num orange">${money(exp)}</div></div><div class="card"><h3>Net Profit</h3><div class="num green">${money(gross-exp)}</div></div></div>
+<div class="panel"><h3>Data Backup</h3><button class="primary" onclick="backup()">Download Backup</button> <button class="primary" onclick="clearData()">Reset All Data</button></div>`;
+}
+function backup(){let blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="rani-vet-medicine-backup.json";a.click()}
+function clearData(){if(confirm("সব data মুছে ফেলবেন?")){localStorage.clear();location.reload()}}
+nav();render();
+</script>
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("./sw.js")}</script></body>
+</html>
