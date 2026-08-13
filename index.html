@@ -77,15 +77,94 @@ a.innerHTML=`<div class="panel"><h2>Products</h2><div class="row">
 <div><label>Sale price</label><input id="ps" type="number"></div><div><label>Stock</label><input id="pst" type="number"></div>
 <div><label>Unit</label><input id="pu" placeholder="পিস / বোতল / প্যাক"></div><div><label>Expiry</label><input id="pe" type="date"></div>
 </div><button class="primary" onclick="addProduct()">Save Product</button></div>
-<div class="panel"><h3>Product List</h3>${state.products.length?`<table><tr><th>Product</th><th>Company</th><th>Buy</th><th>Sell</th><th>Profit</th><th>Stock</th><th></th></tr>${state.products.map((x,i)=>`<tr><td>${x.name}</td><td>${x.company}</td><td>${money(x.buy)}</td><td>${money(x.sell)}</td><td class="profit">${money(x.sell-x.buy)}</td><td>${x.stock} ${x.unit}</td><td><button class="danger" onclick="delProduct(${i})">Delete</button></td></tr>`).join("")}</table>`:`<div class="empty">এখনো কোনো product যোগ করা হয়নি</div>`}</div>`;
+<div class="panel"><h3>Product List</h3>${state.products.length?`<table><tr><th>Product</th><th>Company</th><th>Buy</th><th>Sell</th><th>Profit</th><th>Stock</th><th></th></tr>${state.products.map((x,i)=>`<tr><td>${x.name}</td><td>${x.company}</td><td>${money(x.buy)}</td><td>${money(x.sell)}</td><td class="profit">${money(x.sell-x.buy)}</td><td>${x.stock} ${x.unit}</td><td><button class="danger" onclick="delProduct(${i})">Delete</button></td></tr>`).join("")}</table>`:`<div class="empty">এখনো কোনো product যোগ করা হয়নি</div>`}</div>`;
 }
 function addProduct(){let x={name:pn.value.trim(),company:pc.value.trim(),cat:cat.value.trim(),buy:+pb.value,sell:+ps.value,stock:+pst.value,unit:pu.value.trim()||"পিস",expiry:pe.value};if(!x.name)return alert("Product name দিন");state.products.push(x);save();render()}
 function delProduct(i){if(confirm("Product delete করবেন?")){state.products.splice(i,1);save();render()}}
+
 function sales(a){
-a.innerHTML=`<div class="panel"><h2>Sales</h2><div class="row"><div><label>Product</label><select id="sp">${state.products.map((x,i)=>`<option value="${i}">${x.name} (stock ${x.stock})</option>`).join("")}</select></div><div><label>Quantity</label><input id="sq" type="number" value="1" min="1"></div><div><label>Customer</label><input id="sc" placeholder="নাম"></div><div><label>Customer paid</label><input id="spaid" type="number" value="0"></div></div><button class="primary" onclick="addSale()">Save Sale</button></div>
-<div class="panel"><h3>Sales History</h3>${state.sales.length?state.sales.slice().reverse().map(x=>`<div class="notice">${x.product} × ${x.qty} • ${money(x.total)} • লাভ ${money(x.profit)} ${x.customer?`• ${x.customer}`:""}</div>`).join(""):`<div class="empty">কোনো sale নেই</div>`}</div>`;
+a.innerHTML=`<div class="panel"><h2>Sales (Multi-Select & Price Edit)</h2>
+<div style="margin-bottom:10px;"><label>Search Product</label><input id="s_search" placeholder="পণ্যের নাম লিখে খুঁজুন..." oninput="filterSalesProducts()"></div>
+<div style="max-height:220px;overflow-y:auto;border:1px solid #ccd6d0;border-radius:9px;padding:8px;margin-bottom:10px;" id="sales_prod_list">
+${state.products.map((x,i)=>`<label style="display:flex;align-items:center;gap:8px;padding:6px;border-bottom:1px solid #eee;cursor:pointer;" class="sp-item">
+<input type="checkbox" class="sp-chk" value="${i}" data-sell="${x.sell}" onchange="updateCartSelection()">
+<span style="flex:1"><b>${x.name}</b> (স্টক: ${x.stock} ${x.unit||'পিস'})</span>
+</label>`).join("")}
+</div>
+<div id="cart_edit_area"></div>
+<div class="row" style="margin-top:10px;">
+<div><label>Customer Name</label><input id="sc" placeholder="গ্রাহকের নাম"></div>
+<div><label>Customer Paid (জমা)</label><input id="spaid" type="number" value="0"></div>
+</div>
+<button class="primary" onclick="addSale()" style="margin-top:10px;">Confirm & Save Sale</button>
+</div>
+<div class="panel"><h3>Sales History</h3>${state.sales.length?state.sales.slice().reverse().map(x=>`<div class="notice"><b>${x.customer?x.customer:'Cash Sale'}</b> • মোট: ${money(x.total)} • লাভ: ${money(x.profit)}<br><small>${x.items.map(i=>`${i.name} × ${i.qty} (${money(i.price)})`).join(", ")}</small></div>`).join(""):`<div class="empty">কোনো sale নেই</div>`}</div>`;
+updateCartSelection();
 }
-function addSale(){if(!state.products.length)return alert("আগে product যোগ করুন");let p=state.products[+sp.value],q=+sq.value;if(q>p.stock)return alert("Stock যথেষ্ট নেই");let total=p.sell*q,profit=(p.sell-p.buy)*q,paid=+spaid.value||0,customer=sc.value.trim();p.stock-=q;state.sales.push({product:p.name,qty:q,total,profit,customer,paid,date:new Date().toISOString()});if(customer){let c=state.customers.find(x=>x.name===customer);if(!c){c={name:customer,phone:"",baki:0};state.customers.push(c)}c.baki+=(total-paid)}save();render()}
+
+function filterSalesProducts(){
+let q=document.getElementById("s_search").value.toLowerCase();
+let items=document.querySelectorAll(".sp-item");
+items.forEach(el=>{
+let text=el.innerText.toLowerCase();
+el.style.display=text.includes(q)?"flex":"none";
+});
+}
+
+function updateCartSelection(){
+let chks=document.querySelectorAll(".sp-chk:checked");
+let area=document.getElementById("cart_edit_area");
+if(!chks.length){
+area.innerHTML=`<div class="empty" style="padding:10px;">কোনো পণ্য সিলেক্ট করা হয়নি</div>`;
+return;
+}
+let html=`<h4>সিলেক্ট করা পণ্যসমূহ ও দাম পরিবর্তন:</h4><table><tr><th>Product</th><th>Qty</th><th>Sell Price (৳)</th></tr>`;
+chks.forEach(chk=>{
+let idx=+chk.value;
+let p=state.products[idx];
+html+=`<tr><td>${p.name}</td><td><input type="number" id="sq_${idx}" value="1" min="1" max="${p.stock}" style="width:70px;padding:5px;"></td><td><input type="number" id="sprice_${idx}" value="${p.sell}" style="width:100px;padding:5px;"></td></tr>`;
+});
+html+=`</table>`;
+area.innerHTML=html;
+}
+
+function addSale(){
+let chks=document.querySelectorAll(".sp-chk:checked");
+if(!chks.length)return alert("কমপক্ষে একটি product সিলেক্ট করুন");
+let saleItems=[];
+let total=0, grossProfit=0;
+
+for(let chk of chks){
+let idx=+chk.value;
+let p=state.products[idx];
+let q=+document.getElementById("sq_"+idx).value;
+let customPrice=+document.getElementById("sprice_"+idx).value;
+
+if(q>p.stock)return alert(p.name+" এর স্টক যথেষ্ট নেই!");
+if(q<=0)return alert("সঠিক পরিমাণ দিন");
+
+let itemTotal=customPrice*q;
+let itemProfit=(customPrice-p.buy)*q;
+
+saleItems.push({name:p.name, qty:q, price:customPrice});
+total+=itemTotal;
+grossProfit+=itemProfit;
+p.stock-=q;
+}
+
+let paid=+spaid.value||0;
+let customer=sc.value.trim();
+
+state.sales.push({items:saleItems, total, profit:grossProfit, customer, paid, date:new Date().toISOString()});
+
+if(customer){
+let c=state.customers.find(x=>x.name===customer);
+if(!c){c={name:customer,phone:"",baki:0};state.customers.push(c)}
+c.baki+=(total-paid);
+}
+save();render();
+}
+
 function purchase(a){
 a.innerHTML=`<div class="panel"><h2>Purchase / Stock In</h2><div class="row"><div><label>Product</label><select id="pp">${state.products.map((x,i)=>`<option value="${i}">${x.name}</option>`).join("")}</select></div><div><label>Quantity</label><input id="pq" type="number" value="1" min="1"></div><div><label>Purchase price</label><input id="pprice" type="number"></div><div><label>Supplier</label><input id="psup"></div></div><button class="primary" onclick="addPurchase()">Add Stock</button></div>
 <div class="panel"><h3>Purchase History</h3>${state.purchases.length?state.purchases.slice().reverse().map(x=>`<div class="notice">${x.product} × ${x.qty} • ${money(x.total)} • ${x.supplier||""}</div>`).join(""):`<div class="empty">কোনো purchase নেই</div>`}</div>`;
